@@ -129,6 +129,8 @@ export class GameScene extends Phaser.Scene {
       this, this.player, this.enemies, this.playerProjectiles, this.enemyProjectiles
     );
 
+    this.scene.launch('HUDScene', { player: this.player, levelDef: this.currentLevelDef, weaponSystem: this.weaponSystem });
+
     this.inputManager = new InputManager(this);
     this.inputManager.create();
 
@@ -138,8 +140,6 @@ export class GameScene extends Phaser.Scene {
     this.setupCamera(levelData);
     this.setupEvents();
     this.setupBoss(levelData);
-
-    this.scene.launch('HUDScene', { player: this.player, levelDef: this.currentLevelDef, weaponSystem: this.weaponSystem });
 
     if (telegram.isTelegram) {
       telegram.showBackButton(() => {
@@ -529,7 +529,6 @@ export class GameScene extends Phaser.Scene {
 
   shutdown(): void {
     this.inputManager?.destroy();
-    this.events.removeAllListeners();
   }
 
   private gameOver(): void {
