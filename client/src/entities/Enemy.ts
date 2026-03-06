@@ -12,6 +12,7 @@ export interface EnemyConfig {
   chaseRange: number;
   attackRange: number;
   attackCooldown: number;
+  ranged?: boolean;
 }
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {

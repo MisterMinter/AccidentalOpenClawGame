@@ -58,16 +58,28 @@ export class HUDScene extends Phaser.Scene {
     const gameScene = this.scene.get('GameScene');
     gameScene.events.on('score-changed', () => this.updateScore());
     gameScene.events.on('weapon-changed', () => this.updateWeapon());
-    gameScene.events.on('extra-life', () => this.flashExtraLife());
-  }
-
-  update(): void {
-    if (!this.player || this.player.pState.isDead) return;
+    gameScene.events.on('extra-life', () => {
+      this.updateLives();
+      this.flashExtraLife();
+    });
+    gameScene.events.on('player-hurt', () => {
+      this.updateHealthBar();
+      this.updateLives();
+    });
+    gameScene.events.on('player-died', () => {
+      this.updateHealthBar();
+      this.updateLives();
+    });
 
     this.updateHealthBar();
     this.updateScore();
     this.updateLives();
     this.updateWeapon();
+  }
+
+  update(): void {
+    if (!this.player || this.player.pState.isDead) return;
+    this.updateHealthBar();
   }
 
   private updateHealthBar(): void {

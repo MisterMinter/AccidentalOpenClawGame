@@ -57,6 +57,7 @@ export class CombatSystem {
 
   private setupEvents(): void {
     this.scene.events.on('enemy-attack', (enemy: Enemy) => {
+      if (!enemy.config.ranged) return;
       const dirX = enemy.facing === 'left' ? -1 : 1;
       const proj = new Projectile(
         this.scene, enemy.x + dirX * 16, enemy.y, 'enemy_bullet', dirX

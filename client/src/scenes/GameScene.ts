@@ -38,7 +38,7 @@ interface LevelData {
 
 const ENEMY_CONFIGS: Record<string, EnemyConfig> = {
   officer: { key: 'officer', health: 30, speed: 50, damage: 10, scoreValue: 200, patrolDistance: 80, chaseRange: 150, attackRange: 30, attackCooldown: 1200 },
-  soldier: { key: 'soldier', health: 25, speed: 40, damage: 15, scoreValue: 300, patrolDistance: 60, chaseRange: 200, attackRange: 150, attackCooldown: 2000 },
+  soldier: { key: 'soldier', health: 25, speed: 40, damage: 15, scoreValue: 300, patrolDistance: 60, chaseRange: 200, attackRange: 150, attackCooldown: 2000, ranged: true },
   rat: { key: 'rat', health: 10, speed: 70, damage: 5, scoreValue: 50, patrolDistance: 50, chaseRange: 100, attackRange: 20, attackCooldown: 800 },
   cutthroat: { key: 'cutthroat', health: 40, speed: 55, damage: 15, scoreValue: 350, patrolDistance: 90, chaseRange: 160, attackRange: 35, attackCooldown: 1000 },
   robber_thief: { key: 'robber_thief', health: 25, speed: 80, damage: 10, scoreValue: 250, patrolDistance: 100, chaseRange: 180, attackRange: 25, attackCooldown: 900 },
@@ -46,12 +46,12 @@ const ENEMY_CONFIGS: Record<string, EnemyConfig> = {
   seagull: { key: 'seagull', health: 15, speed: 90, damage: 8, scoreValue: 150, patrolDistance: 120, chaseRange: 200, attackRange: 30, attackCooldown: 1000 },
   guard_dog: { key: 'guard_dog', health: 35, speed: 100, damage: 12, scoreValue: 300, patrolDistance: 80, chaseRange: 200, attackRange: 25, attackCooldown: 700 },
   bear_sailor: { key: 'bear_sailor', health: 60, speed: 35, damage: 20, scoreValue: 500, patrolDistance: 60, chaseRange: 140, attackRange: 40, attackCooldown: 1800 },
-  red_tail_pirate: { key: 'red_tail_pirate', health: 45, speed: 50, damage: 15, scoreValue: 400, patrolDistance: 80, chaseRange: 160, attackRange: 35, attackCooldown: 1200 },
+  red_tail_pirate: { key: 'red_tail_pirate', health: 45, speed: 50, damage: 15, scoreValue: 400, patrolDistance: 80, chaseRange: 160, attackRange: 35, attackCooldown: 1200, ranged: true },
   crab: { key: 'crab', health: 20, speed: 30, damage: 10, scoreValue: 100, patrolDistance: 40, chaseRange: 80, attackRange: 20, attackCooldown: 600 },
   peg_leg: { key: 'peg_leg', health: 50, speed: 45, damage: 18, scoreValue: 450, patrolDistance: 70, chaseRange: 150, attackRange: 35, attackCooldown: 1400 },
   crazy_hook: { key: 'crazy_hook', health: 55, speed: 60, damage: 20, scoreValue: 500, patrolDistance: 90, chaseRange: 180, attackRange: 30, attackCooldown: 1000 },
   mercat: { key: 'mercat', health: 40, speed: 65, damage: 15, scoreValue: 400, patrolDistance: 100, chaseRange: 170, attackRange: 35, attackCooldown: 1100 },
-  siren: { key: 'siren', health: 35, speed: 50, damage: 25, scoreValue: 600, patrolDistance: 80, chaseRange: 200, attackRange: 150, attackCooldown: 2500 },
+  siren: { key: 'siren', health: 35, speed: 50, damage: 25, scoreValue: 600, patrolDistance: 80, chaseRange: 200, attackRange: 150, attackCooldown: 2500, ranged: true },
   tiger_guard: { key: 'tiger_guard', health: 70, speed: 55, damage: 25, scoreValue: 700, patrolDistance: 80, chaseRange: 180, attackRange: 40, attackCooldown: 1200 },
 };
 
@@ -118,8 +118,9 @@ export class GameScene extends Phaser.Scene {
 
     this.checkpointSystem = new CheckpointSystem();
     this.checkpointSystem.addCheckpoint(levelData.spawnX, levelData.spawnY, 'start');
+    const hs = TILE_SIZE / 2;
     for (const cp of levelData.checkpoints) {
-      this.checkpointSystem.addCheckpoint(cp.x, cp.y, cp.id);
+      this.checkpointSystem.addCheckpoint(cp.x + hs, cp.y + hs, cp.id);
     }
 
     this.weaponSystem = new WeaponSystem(this.player);
@@ -239,6 +240,38 @@ export class GameScene extends Phaser.Scene {
         this.completeLevel();
       });
     });
+
+    this.events.on('boss-summon', (boss: Boss) => {
+      const enemyTypes = this.currentLevelDef.enemyTypes;
+      const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+      const config = ENEMY_CONFIGS[type];
+      if (!config) return;
+      const spawnDir = boss.facing === 'left' ? -1 : 1;
+      const enemy = new Enemy(this, boss.x + spawnDir * 60, boss.y, config);
+      this.enemies.add(enemy as unknown as Phaser.GameObjects.GameObject);
+    });
+
+    this.events.on('boss-slam', (boss: Boss) => {
+      const slamRange = TILE_SIZE * 5;
+      const dist = Math.abs(this.player.x - boss.x);
+      if (dist < slamRange && !this.player.pState.invincible && !this.player.pState.isDead) {
+        const knockDir = boss.x < this.player.x ? 1 : -1;
+        this.player.takeDamage(boss.config.damage, knockDir);
+      }
+    });
+
+    this.events.on('boss-wave', (boss: Boss) => {
+      for (let i = -2; i <= 2; i++) {
+        const proj = new Projectile(this, boss.x + i * 30, boss.y, 'enemy_bullet', i < 0 ? -1 : 1, i * 0.3);
+        this.enemyProjectiles.add(proj);
+      }
+    });
+
+    this.events.on('boss-rage', (boss: Boss) => {
+      this.cameras.main.shake(500, 0.012);
+      const body = boss.body as Phaser.Physics.Arcade.Body;
+      body.setVelocityX((boss.facing === 'left' ? -1 : 1) * boss.config.speed * 2.5);
+    });
   }
 
   private spawnBoss(levelData: LevelData): void {
@@ -286,7 +319,7 @@ export class GameScene extends Phaser.Scene {
     if (this.player.pState.isDead) {
       this.respawnTimer -= delta;
       if (this.respawnTimer <= 0) {
-        if (this.player.pState.lives >= 0) {
+        if (this.player.pState.lives > 0) {
           const spawn = this.checkpointSystem.getSpawnPoint();
           this.player.respawn(spawn.x, spawn.y);
         } else {
@@ -305,8 +338,10 @@ export class GameScene extends Phaser.Scene {
     this.combatSystem.update(time, delta);
     this.powerUpSystem.update(delta);
 
-    for (const enemy of [...this.enemies.getChildren()] as Enemy[]) {
-      enemy.update(time, delta, this.player.x, this.player.y);
+    const enemyList = this.enemies.getChildren();
+    for (let i = enemyList.length - 1; i >= 0; i--) {
+      const enemy = enemyList[i] as unknown as Enemy;
+      if (enemy.active) enemy.update(time, delta, this.player.x, this.player.y);
     }
 
     if (this.boss && this.boss.currentPhase !== 'defeated') {
@@ -492,6 +527,11 @@ export class GameScene extends Phaser.Scene {
     this.scene.pause();
   }
 
+  shutdown(): void {
+    this.inputManager?.destroy();
+    this.events.removeAllListeners();
+  }
+
   private gameOver(): void {
     this.scene.stop('HUDScene');
     this.scene.stop('BossScene');
@@ -567,45 +607,61 @@ export class GameScene extends Phaser.Scene {
       return true;
     };
 
-    const tiers = [
-      { minRow: 14, maxRow: 15, weight: 0.50 },
-      { minRow: 11, maxRow: 13, weight: 0.35 },
-      { minRow: 8, maxRow: 10, weight: 0.15 },
-    ];
+    // Jump physics: single jump = 68px (~2 tiles), double jump = 118px (~3 tiles) from
+    // any surface. Platforms must be reachable through connected chains from ground.
+    // Ground surface is at groundTopRow (row 18). Player can double-jump to row 15.
+    const MAX_STEP_UP = 3; // max rows upward per double jump
 
-    const numPlatforms = 12 + levelId * 3;
-    const sectionWidth = Math.floor((mapWidth - 16) / numPlatforms);
+    const numBasePlatforms = 10 + levelId * 2;
+    const sectionWidth = Math.floor((mapWidth - 16) / numBasePlatforms);
 
-    for (let i = 0; i < numPlatforms; i++) {
-      const sectionStart = 6 + i * sectionWidth;
-      const px = rng.between(sectionStart, Math.min(sectionStart + sectionWidth - 2, mapWidth - 6));
-      const pw = rng.between(2, Math.min(5, mapWidth - px - 1));
-
-      const roll = rng.frac();
-      let tier = tiers[0];
-      let cumulative = 0;
-      for (const t of tiers) {
-        cumulative += t.weight;
-        if (roll < cumulative) { tier = t; break; }
-      }
-      const py = rng.between(tier.minRow, tier.maxRow);
-
-      for (let dx = 0; dx < pw; dx++) {
+    const addPlatformTiles = (col: number, row: number, w: number) => {
+      const clamped = Math.max(0, Math.min(col, mapWidth - w - 2));
+      for (let dx = 0; dx < w; dx++) {
         data.platforms.push({
-          x: (px + dx) * tileW,
-          y: py * tileW,
+          x: (clamped + dx) * tileW,
+          y: row * tileW,
           w: 1,
-          tileId: dx === 0 ? 8 : dx === pw - 1 ? 9 : 2,
+          tileId: dx === 0 ? 8 : dx === w - 1 ? 9 : 2,
         });
       }
-
       if (rng.frac() < 0.6) {
         const gemTypes: CollectibleType[] = ['gem_red', 'gem_green', 'gem_blue', 'gem_purple'];
         const gemFrames = [0, 1, 2, 3];
         const gi = rng.between(0, 3);
-        const cx = (px + Math.floor(pw / 2)) * tileW + tileW / 2;
-        const cy = (py - 1) * tileW;
+        const cx = (clamped + Math.floor(w / 2)) * tileW + tileW / 2;
+        const cy = (row - 1) * tileW;
         placeCollectible(cx, cy, gemTypes[gi], gemFrames[gi]);
+      }
+    };
+
+    for (let i = 0; i < numBasePlatforms; i++) {
+      const sectionStart = 6 + i * sectionWidth;
+      const px = rng.between(sectionStart, Math.min(sectionStart + sectionWidth - 2, mapWidth - 6));
+      const pw = rng.between(2, Math.min(5, mapWidth - px - 1));
+
+      // Tier 1: rows 15-16, always reachable from ground via double jump
+      const baseRow = rng.between(15, 16);
+      addPlatformTiles(px, baseRow, pw);
+
+      // 40% chance to extend upward with a connected tier 2 platform
+      if (rng.frac() < 0.4) {
+        const t2Step = rng.between(2, MAX_STEP_UP);
+        const t2Row = baseRow - t2Step;
+        const t2Col = px + rng.between(-2, 2);
+        const t2W = rng.between(2, 4);
+        addPlatformTiles(t2Col, t2Row, t2W);
+
+        // 30% chance to add tier 3 on top of tier 2
+        if (rng.frac() < 0.3) {
+          const t3Step = rng.between(2, MAX_STEP_UP);
+          const t3Row = t2Row - t3Step;
+          if (t3Row >= 5) {
+            const t3Col = t2Col + rng.between(-2, 2);
+            const t3W = rng.between(2, 3);
+            addPlatformTiles(t3Col, t3Row, t3W);
+          }
+        }
       }
     }
 

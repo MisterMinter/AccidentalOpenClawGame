@@ -78,7 +78,8 @@ export class Projectile extends Phaser.Physics.Arcade.Sprite {
     }
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.enable = false;
-    this.scene.time.delayedCall(0, () => this.destroy());
+    this.setActive(false).setVisible(false);
+    this.destroy();
   }
 
   onHit(): void {

@@ -59,6 +59,7 @@ export class PauseScene extends Phaser.Scene {
   private goToMenu(): void {
     this.scene.stop('GameScene');
     this.scene.stop('HUDScene');
+    this.scene.stop('BossScene');
     this.scene.stop();
     this.scene.start('MenuScene');
   }

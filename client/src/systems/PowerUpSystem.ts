@@ -32,14 +32,18 @@ export class PowerUpSystem {
   }
 
   update(delta: number): void {
+    const expired: PowerUpType[] = [];
     for (const [type, remaining] of this.activePowerUps) {
       const newRemaining = remaining - delta;
       if (newRemaining <= 0) {
-        this.deactivate(type);
-        this.activePowerUps.delete(type);
+        expired.push(type);
       } else {
         this.activePowerUps.set(type, newRemaining);
       }
+    }
+    for (const type of expired) {
+      this.deactivate(type);
+      this.activePowerUps.delete(type);
     }
   }
 

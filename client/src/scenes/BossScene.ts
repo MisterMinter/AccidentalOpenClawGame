@@ -52,7 +52,10 @@ export class BossScene extends Phaser.Scene {
   }
 
   update(): void {
-    if (!this.boss || this.boss.currentPhase === 'defeated') return;
+    if (!this.boss || this.boss.currentPhase === 'defeated') {
+      this.healthBar?.clear();
+      return;
+    }
     this.drawHealthBar();
     this.updatePhaseText();
   }

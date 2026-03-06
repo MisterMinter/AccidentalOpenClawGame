@@ -2,6 +2,8 @@
 
 A side-scrolling platformer inspired by the classic **Captain Claw** (1997), accidentally built from scratch as a **Telegram Mini App** using Phaser 3 and TypeScript.
 
+### [Play it now in your browser](https://MisterMinter.github.io/AccidentalOpenClawGame/)
+
 ![OpenClaw Gameplay](screenshots/gameplay.png)
 
 ## How This Happened
